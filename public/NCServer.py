@@ -2,7 +2,8 @@
 #  サーバー
 #  filename : NCServer.py
 #  create : 2024/04/11 Kazuma.Sasaki
-# 起動方法 python NCServer.py
+#  rev.1 : 2024/04/12 Kazuma.Sasaki
+# 起動方法　python NCServer.py
 # ************************************************
 import os
 import sys
@@ -12,7 +13,6 @@ from http.server import BaseHTTPRequestHandler
 from http.server import CGIHTTPRequestHandler
 from http.server import HTTPServer
 import json
-import struct
 import pigpio #pigpioライブラリをインポートする
 import urllib
 
@@ -28,12 +28,6 @@ DOWNI_pin = 21
 UPII_pin = 23
 DOWNII_pin = 24
 
-# pwm_pin = PWMLED(13)
-# pwm_pin.frequency=freq
-# pwm_pin.value=0
-# UP_pin = LED(20)
-# DOWN_pin = LED(21)
-
 pi.set_mode(UPI_pin, pigpio.OUTPUT) #UP出力ピンを指定
 pi.set_mode(DOWNI_pin, pigpio.OUTPUT) #DOWN出力ピンを指定
 pi.set_mode(UPII_pin, pigpio.OUTPUT) #UP出力ピンを指定
@@ -43,78 +37,77 @@ freq = int(freq) #PWM周波数をHzで指定
 class Handler(CGIHTTPRequestHandler, SimpleHTTPRequestHandler):
     cgi_directories = ["/cgi-bin"]
     def do_POST(self):
-        parsed_path = urlparse(self.path)
-        content_len = int(self.headers.get('content-length'))
-        requestBody = self.rfile.read(content_len).decode('UTF-8')
-        params = urllib.parse.parse_qs(requestBody)
-        # print(self.path + " " +  requestBody)
         data={}
         statusText = 'NG'
-        if "/power1" == self.path :
-            power = float(params["power"][0])
-            freq = float(params["freq"][0])
+        try:
+            parsed_path = urlparse(self.path)
+            content_len = int(self.headers.get('content-length'))
+            requestBody = self.rfile.read(content_len).decode('UTF-8')
+            params = urllib.parse.parse_qs(requestBody)
+            if "/power1" == self.path :
+                power = float(params["power"][0])
+                freq = float(params["freq"][0])
 
-            duty = int(power)
-            # pwm_pin.frequency=int(freq)
-            # pwm_pin.value=duty/100
-            # pwm_pin.value = duty / 100
+                duty = int(power)
 
-            cnv_dutycycle = int((duty * 1000000 / 100))
-            pi.hardware_PWM(pwmI_pin, int(freq), cnv_dutycycle)
-            
-            data={"power":power, "freq":freq}
-            statusText = 'OK'
-        elif "/power2" == self.path :
-            power = float(params["power"][0])
-            freq = float(params["freq"][0])
+                cnv_dutycycle = int((duty * 1000000 / 100))
+                pi.hardware_PWM(pwmI_pin, int(freq), cnv_dutycycle)
+                
+                data={"power":power, "freq":freq}
+                statusText = 'OK'
+            elif "/power2" == self.path :
+                power = float(params["power"][0])
+                freq = float(params["freq"][0])
 
-            duty = int(power)
+                duty = int(power)
 
-            cnv_dutycycle = int((duty * 1000000 / 100))
-            pi.hardware_PWM(pwmII_pin, int(freq), cnv_dutycycle)
-            
-            data={"power":power, "freq":freq}
-            statusText = 'OK'
+                cnv_dutycycle = int((duty * 1000000 / 100))
+                pi.hardware_PWM(pwmII_pin, int(freq), cnv_dutycycle)
+                
+                data={"power":power, "freq":freq}
+                statusText = 'OK'
 
-        elif "/dir1" == self.path :
-            dir = params["dir"][0]
+            elif "/dir1" == self.path :
+                dir = params["dir"][0]
 
-            if(dir == 'OFF'):   # OFF
-                pi.write(UPI_pin, 0)
-                pi.write(DOWNI_pin, 0)
-            elif(dir == 'UP'):  # UP
-                pi.write(DOWNI_pin, 0)
-                pi.write(UPI_pin, 1)
-            elif(dir == 'DOWN'):  # DOWN
-                pi.write(UPI_pin, 0)
-                pi.write(DOWNI_pin, 1)
-            else:           # ERROR
-                pi.write(UPI_pin, 1)
-                pi.write(DOWNI_pin, 1)
-            
-            data={"dir":dir}
-            statusText = 'OK'
-        elif "/dir2" == self.path :
-            dir = params["dir"][0]
+                if(dir == 'OFF'):   # OFF
+                    pi.write(UPI_pin, 0)
+                    pi.write(DOWNI_pin, 0)
+                elif(dir == 'UP'):  # UP
+                    pi.write(DOWNI_pin, 0)
+                    pi.write(UPI_pin, 1)
+                elif(dir == 'DOWN'):  # DOWN
+                    pi.write(UPI_pin, 0)
+                    pi.write(DOWNI_pin, 1)
+                else:           # ERROR
+                    pi.write(UPI_pin, 0)        # rev. 1
+                    pi.write(DOWNI_pin, 0)      # rev. 1
+                
+                data={"dir":dir}
+                statusText = 'OK'
+            elif "/dir2" == self.path :
+                dir = params["dir"][0]
 
-            if(dir == 'OFF'):   # OFF
-                pi.write(UPII_pin, 0)
-                pi.write(DOWNII_pin, 0)
-            elif(dir == 'UP'):  # UP
-                pi.write(DOWNII_pin, 0)
-                pi.write(UPII_pin, 1)
-            elif(dir == 'DOWN'):  # DOWN
-                pi.write(UPII_pin, 0)
-                pi.write(DOWNII_pin, 1)
-            else:           # ERROR
-                pi.write(UPII_pin, 1)
-                pi.write(DOWNII_pin, 1)
-            
-            data={"dir":dir}
-            statusText = 'OK'
-        else:
-            data={}
-            statusText = 'NG'
+                if(dir == 'OFF'):   # OFF
+                    pi.write(UPII_pin, 0)
+                    pi.write(DOWNII_pin, 0)
+                elif(dir == 'UP'):  # UP
+                    pi.write(DOWNII_pin, 0)
+                    pi.write(UPII_pin, 1)
+                elif(dir == 'DOWN'):  # DOWN
+                    pi.write(UPII_pin, 0)
+                    pi.write(DOWNII_pin, 1)
+                else:           # ERROR 
+                    pi.write(UPII_pin, 0)       # rev. 1
+                    pi.write(DOWNII_pin, 0)     # rev. 1
+                
+                data={"dir":dir}
+                statusText = 'OK'
+            else:
+                data={}
+                statusText = 'NG'
+        except Exception as err:
+            print(f"Unexpected {err=}, {type(err)=}")
             
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
